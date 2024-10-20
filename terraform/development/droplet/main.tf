@@ -19,18 +19,9 @@ resource "digitalocean_droplet" "dev_droplet" {
   size   = "s-1vcpu-1gb-amd"
   ssh_keys = [data.digitalocean_ssh_key.macbook_air_ssh_public_key.id]
   tags = ["dev", "docker"]
-  user_data = templatefile("${path.module}/cloud-init/cloud-init.yaml", {})
-}
-
-resource "digitalocean_droplet_snapshot" "droplet_snapshot" {
-  # Create snapshot only if the flag is set to true
-  count      = var.create_snapshot ? 1 : 0
-  droplet_id = digitalocean_droplet.dev_droplet.id
-  name       = "snapshot-${digitalocean_droplet.dev_droplet.name}-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
-
-  lifecycle {
-    prevent_destroy = true  # Prevent snapshot from being destroyed
-  }
+  user_data = templatefile("${path.module}/cloud-init/cloud-init.yaml", {
+    digitalocean_token = var.do_token
+  })
 }
 
 resource "digitalocean_record" "dev" {
@@ -39,12 +30,4 @@ resource "digitalocean_record" "dev" {
   name   = "dev"
   ttl    = 300
   value  = digitalocean_droplet.dev_droplet.ipv4_address
-}
-
-output "ipv4" {
-  value = digitalocean_droplet.dev_droplet.ipv4_address
-}
-
-output "domain" {
-  value = digitalocean_record.dev.fqdn
 }

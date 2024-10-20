@@ -1,0 +1,1 @@
+doctl compute snapshot delete $(doctl compute snapshot list --format ID,Name | grep "snapshot-dev" | awk '{print $1}') --force

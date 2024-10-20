@@ -1,0 +1,13 @@
+parameters:
+    droplet_name: dev
+packages:
+  - name: requests
+    functions:
+      - name: destroy-development
+        environment:
+          DIGITALOCEAN_TOKEN: ${DIGITALOCEAN_TOKEN}
+          TFC_TOKEN : ${TFC_TOKEN}
+        runtime: python:default
+        limits:
+          memory: 128
+          timeout: 300000

@@ -8,7 +8,7 @@ terraform {
   cloud {
     organization = "digitalocean-shra012"
     workspaces {
-      name = "development"
+      name = "development-loadbalancer"
     }
   }
   required_providers {
@@ -23,6 +23,6 @@ terraform {
 # "token" is the API token used to authenticate with the DigitalOcean API.
 # The value of this token is passed from the command line or from a variables file.
 provider "digitalocean" {
-  # TOKEN is automatically fetched if it is exported as an environment varible `DIGITALOCEAN_TOKEN`. 
+  # TOKEN is automatically fetched if it is exported as an environment variable `DIGITALOCEAN_TOKEN`.
   token = var.do_token
 }

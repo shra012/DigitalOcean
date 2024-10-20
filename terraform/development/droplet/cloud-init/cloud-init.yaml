@@ -32,6 +32,7 @@ packages:
   - software-properties-common
   - jq
   - openjdk-21-jdk
+  - snapd
 
 write_files:
   - path: /root/install_docker.sh
@@ -156,6 +157,28 @@ write_files:
 
       # Restart NGINX to apply the changes
       systemctl restart nginx
+  - path: /root/delete_droplet_with_doctl.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      # Update the system
+      snap install core  # Ensure the latest version of snapd
+      # Install doctl using Snap
+      snap install doctl
+      # Set the DigitalOcean API token as an environment variable
+      # Replace 'your-digital-ocean-token-here' with your actual API token
+      echo "export DIGITALOCEAN_TOKEN=${digitalocean_token}" | sudo tee -a /etc/profile
+      # Load the environment variable
+      source /etc/profile
+      # Authenticate doctl using the token from the environment variable
+      doctl auth init --access-token "$DIGITALOCEAN_TOKEN"
+      doctl serverless install
+      doctl serverless connect
+      # Verify doctl installation and authentication and invoke delete
+      doctl version
+      doctl serverless functions invoke requests/destroy-development --no-wait
+      doctl serverless activations logs --function requests/destroy-development --follow
 
 runcmd:
   - bash /root/install_docker.sh
@@ -165,4 +188,7 @@ runcmd:
   - bash /root/install_node.sh
   - bash /root/install_python.sh
   - bash /root/nginx_install_and_setup.sh
+  - |
+    cron_time=$(date --date='+8 hours' '+%M %H * * *')
+    echo "$cron_time root /root/delete_droplet_with_doctl.sh >> /var/log/delete_droplet_with_doctl.log 2>&1" | tee -a /etc/crontab
 
