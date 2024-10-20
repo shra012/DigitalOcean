@@ -1,0 +1,168 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+package_reboot_if_required: true
+
+users:
+  - name: ansible
+    gecos: Ansible User
+    groups: users, admin, wheel, docker
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCYfBpG3AALrHIfayUaIHoxbZByyEqTlNJdeLLdbW64K8DnQGY1ra8gdcx/AoMzjmP2UKJwTaigHoH3mKuUeb7LxX74/Pd2JqAyCMrJtrW/Ll20ApcxrxXI5cUM1mEcsFTcAh9fnkq+boV/NXKnWBkHacc/gBq9Ij6rHsCfObBQLjWCms1TG8jqAj6hxr4fuvrFWgpUUiHHVidHaGd38B10bCpaLYR/O/Z/moRCcvJDdsAJNwHvZcgMluZK33b7RtU/9fHHzbm69qfJXU7cco4wnJVhEa6gVXMr7dM6ExrVaflhdB/D/nvfWYrOGcnIY2H8OK9/w+2KOpELj/VofcnIEuFqVoDuZ9Ur7kFhBvyChdves95Xswgh+ThvSYJqPUeWIlTz/vzuhp1C4tWwvEcxY4utjezUZ6uwKifByDLkvgKkM4baHymhYXAIqY5gcxzjw+RyiFzJz/7bdicnCGMGwYalWfAACImdAZ/pV2w5rW44PfTEXZMie7CaAOZGd4k= "
+  - name: cloud
+    gecos: Cloud User
+    groups: users, admin, wheel, docker
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCYfBpG3AALrHIfayUaIHoxbZByyEqTlNJdeLLdbW64K8DnQGY1ra8gdcx/AoMzjmP2UKJwTaigHoH3mKuUeb7LxX74/Pd2JqAyCMrJtrW/Ll20ApcxrxXI5cUM1mEcsFTcAh9fnkq+boV/NXKnWBkHacc/gBq9Ij6rHsCfObBQLjWCms1TG8jqAj6hxr4fuvrFWgpUUiHHVidHaGd38B10bCpaLYR/O/Z/moRCcvJDdsAJNwHvZcgMluZK33b7RtU/9fHHzbm69qfJXU7cco4wnJVhEa6gVXMr7dM6ExrVaflhdB/D/nvfWYrOGcnIY2H8OK9/w+2KOpELj/VofcnIEuFqVoDuZ9Ur7kFhBvyChdves95Xswgh+ThvSYJqPUeWIlTz/vzuhp1C4tWwvEcxY4utjezUZ6uwKifByDLkvgKkM4baHymhYXAIqY5gcxzjw+RyiFzJz/7bdicnCGMGwYalWfAACImdAZ/pV2w5rW44PfTEXZMie7CaAOZGd4k= "
+
+packages:
+  - git
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - unattended-upgrades
+  - software-properties-common
+  - jq
+  - openjdk-21-jdk
+
+write_files:
+  - path: /root/install_docker.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      apt-get update
+      apt-get install -y ca-certificates curl gnupg lsb-release
+      install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+      gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      chmod a+r /etc/apt/keyrings/docker.gpg
+      echo \
+        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+        https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | \
+        tee /etc/apt/sources.list.d/docker.list > /dev/null
+      apt-get update
+      apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      systemctl enable docker
+      systemctl start docker
+
+  - path: /root/install_ansible_neovim.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      apt-add-repository -y ppa:ansible/ansible
+      apt-add-repository -y ppa:neovim-ppa/unstable
+      apt-get update
+      apt-get install -y ansible neovim
+
+  - path: /root/lazyvim_setup.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      git clone https://github.com/LazyVim/starter /root/.config/nvim
+      rm -rf /root/.config/nvim/.git
+      git clone https://github.com/LazyVim/starter /home/ansible/.config/nvim
+      rm -rf /home/ansible/.config/nvim/.git
+      chown -R ansible:ansible /home/ansible/.config
+
+  - path: /root/install_lazygit.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | jq -r .tag_name)_Linux_x86_64.tar.gz"
+      tar xf lazygit.tar.gz lazygit
+      install lazygit /usr/local/bin
+      rm -rf lazygit.tar.gz lazygit
+
+  - path: /root/install_node.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+      apt-get install -y nodejs
+      npm install -g n
+      n 20.18.0
+      npm uninstall -g n
+      apt-get remove --purge -y nodejs npm
+
+  - path: /root/install_python.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      add-apt-repository -y ppa:deadsnakes/ppa
+      apt update
+      apt install -y python3.13
+      python3.13 --version
+
+  - path: /root/nginx_install_and_setup.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+
+      # Install necessary packages
+      apt-get update
+      apt-get install -y nginx certbot python3-certbot-nginx
+
+      # Configure firewall
+      ufw allow 'Nginx Full'
+
+      # Create a simple service running on port 8080
+      docker run -d --name demo-service -p 8080:8000 crccheck/hello-world
+      
+      certbot --nginx -d dev.shra012.com --non-interactive --agree-tos -m shravan_fisher@shra012.com
+
+      # Configure NGINX for traffic routing from 443 to 8080
+      cat << 'EOF' > /etc/nginx/sites-available/default
+      server {
+          listen 80 default_server;
+          listen [::]:80 default_server;
+          server_name dev.shra012.com;
+
+          location / {
+              return 301 https://$host$request_uri;
+          }
+      }
+
+      server {
+          listen 443 ssl;
+          server_name dev.shra012.com;
+
+          ssl_certificate /etc/letsencrypt/live/dev.shra012.com/fullchain.pem;
+          ssl_certificate_key /etc/letsencrypt/live/dev.shra012.com/privkey.pem;
+
+          location / {
+              proxy_pass http://127.0.0.1:8080;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+          }
+      }
+      EOF
+
+      # Restart NGINX to apply the changes
+      systemctl restart nginx
+
+runcmd:
+  - bash /root/install_docker.sh
+  - bash /root/install_ansible_neovim.sh
+  - bash /root/lazyvim_setup.sh
+  - bash /root/install_lazygit.sh
+  - bash /root/install_node.sh
+  - bash /root/install_python.sh
+  - bash /root/nginx_install_and_setup.sh
+

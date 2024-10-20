@@ -1,2 +1,2 @@
-# DigitalOcean
-A respository that contains all digtalocean releated components.
+# Digital-Ocean
+A repository that holds all digital ocean related components.
